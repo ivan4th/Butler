@@ -43,6 +43,7 @@
   (let ((map (make-keymap)))
     (define-key map (kbd "g") 'butler-refresh)
     (define-key map (kbd "t") 'trigger-butler-job)
+    (define-key-map (kbd "c") 'console-butler-job)
     (define-key map (kbd "h") 'hide-butler-job)
     map))
 
@@ -175,7 +176,24 @@
       (if (and url auth)
           (web-http-get (lambda (conn headers data))
                         :url (concat url "build/")
-                        :extra-headers `(("Authorization" . ,auth))))      )))
+                        :extra-headers `(("Authorization" . ,auth)))))))
+
+(defun console-butler-job ()
+  (interactive)
+  (with-current-buffer (butler-buffer)
+    (let* ((job-name (find-current-job))
+           (server-name (find-current-server job-name))
+           (server (get-server server-name))
+           (job (get-job server job-name))
+           (url (gethash 'url job))
+           (auth (gethash 'auth server))
+           (buffer-name (concat "*" job-name " console*")))
+      (switch-to-buffer (concat "*" job-name " console*"))
+      (web-http-get (lambda (conn headers data)
+                      (with-current-buffer buffer-name
+                        (insert data)))
+                    :url (concat url "lastBuild/logText/progressiveText?start=0")
+                    :extra-headers `(("Authorization" . ,auth))))))
 
 (defun hide-butler-job ()
   (interactive)
