@@ -170,35 +170,32 @@
 
 (defun jenkins-refresh-timer (buffer-name)
   (lambda ()
-    (with-current-buffer buffer-name
-      (with-current-buffer (butler-buffer)
-    (let* ((job-name (find-current-job))
-           (server-name (find-current-server job-name))
-           (server (get-server server-name))
-           (job (get-job server job-name))
-           (url (gethash 'url job))
-           (auth (gethash 'auth server))
-           (buffer-name (concat "*" job-name " console*")))
-      (web-http-get (lambda (conn headers data)
-                      (with-current-buffer buffer-name
-                        (insert data)
-                        (delete-trailing-whitespace)
-                        (if (equal "true" (gethash 'x-more-data headers))
-                            (progn
-                              (make-local-variable 'console-timer)
-                              (make-local-variable 'console-url)
-                              (make-local-variable 'console-auth)
-                              (make-local-variable 'console-position)
-                              (setq console-url (concat "lastBuild/logText/progressiveText")
-                                    console-auth auth
-                                    console-position (string-to-int (gethash 'x-text-size headers)))
-                              (unless (boundp 'console-timer)
-                                (setq console-timer (run-at-time "5 sec"
-                                                                 5
-                                                                 (jenkins-refresh-timer buffer-name))))))
-                        ))
-                    :url (concat url "lastBuild/logText/progressiveText?start=0")
-                    :extra-headers `(("Authorization" . ,auth))))))))
+    (if (get-buffer buffer-name)
+        (with-current-buffer (butler-buffer)
+          (let* ((job-name (find-current-job))
+                 (server-name (find-current-server job-name))
+                 (server (get-server server-name))
+                 (job (get-job server job-name))
+                 (url (gethash 'url job))
+                 (auth (gethash 'auth server))
+                 (buffer-name (concat "*" job-name " console*")))
+            (web-http-get (lambda (conn headers data)
+                            (with-current-buffer buffer-name
+                              (insert data)
+                              (delete-trailing-whitespace)
+                              (if (equal "true" (gethash 'x-more-data headers))
+                                  (progn
+                                    (setq console-position (gethash 'x-text-size headers))
+                                    (unless (boundp 'console-timer)
+                                      (setq console-timer (run-at-time "5 sec"
+                                                                       5
+                                                                       (jenkins-refresh-timer buffer-name)))))
+                                (progn
+                                  (if (boundp 'console-timer)
+                                      (progn (cancel-timer console-timer)
+                                             (setq console-timer nil)))))))
+                          :url (concat url "lastBuild/logText/progressiveText?start=" (with-current-buffer buffer-name console-position))
+                          :extra-headers `(("Authorization" . ,auth))))))))
 
 (defun console-butler-job ()
   (interactive)
@@ -217,7 +214,7 @@
         (make-local-variable 'console-position)
         (setq console-url (concat "lastBuild/logText/progressiveText")
               console-auth auth
-              console-position 0)
+              console-position "0")
         (switch-to-buffer (concat "*" job-name " console*"))
         (funcall (jenkins-refresh-timer buffer-name))))))
 
