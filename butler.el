@@ -43,7 +43,7 @@
   (let ((map (make-keymap)))
     (define-key map (kbd "g") 'butler-refresh)
     (define-key map (kbd "t") 'trigger-butler-job)
-    (define-key-map (kbd "c") 'console-butler-job)
+    (define-key map (kbd "c") 'console-butler-job)
     (define-key map (kbd "h") 'hide-butler-job)
     map))
 
