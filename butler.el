@@ -191,7 +191,8 @@
       (switch-to-buffer (concat "*" job-name " console*"))
       (web-http-get (lambda (conn headers data)
                       (with-current-buffer buffer-name
-                        (insert data)))
+                        (insert data)
+                        (delete-trailing-whitespace)))
                     :url (concat url "lastBuild/logText/progressiveText?start=0")
                     :extra-headers `(("Authorization" . ,auth))))))
 
