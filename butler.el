@@ -190,7 +190,6 @@
            (url (gethash 'url job))
            (auth (gethash 'auth server))
            (buffer-name (concat "*" job-name " console*")))
-      (switch-to-buffer (concat "*" job-name " console*"))
       (web-http-get (lambda (conn headers data)
                       (with-current-buffer buffer-name
                         (insert data)
@@ -222,27 +221,16 @@
            (url (gethash 'url job))
            (auth (gethash 'auth server))
            (buffer-name (concat "*" job-name " console*")))
-      (switch-to-buffer (concat "*" job-name " console*"))
-      (web-http-get (lambda (conn headers data)
-                      (with-current-buffer buffer-name
-                        (insert data)
-                        (delete-trailing-whitespace)
-                        (if (equal "true" (gethash 'x-more-data headers))
-                            (progn
-                              (make-local-variable 'console-timer)
-                              (make-local-variable 'console-url)
-                              (make-local-variable 'console-auth)
-                              (make-local-variable 'console-position)
-                              (setq console-url (concat "lastBuild/logText/progressiveText")
-                                    console-auth auth
-                                    console-position (string-to-int (gethash 'x-text-size headers))
-                                    console-timer (run-at-time "5 sec"
-                                                               5
-                                                               (jenkins-refresh-timer buffer-name)))
-                              ))
-                        ))
-                    :url (concat url "lastBuild/logText/progressiveText?start=0")
-                    :extra-headers `(("Authorization" . ,auth))))))
+      (with-current-buffer (get-buffer-create buffer-name)
+        (make-local-variable 'console-timer)
+        (make-local-variable 'console-url)
+        (make-local-variable 'console-auth)
+        (make-local-variable 'console-position)
+        (setq console-url (concat "lastBuild/logText/progressiveText")
+              console-auth auth
+              console-position 0)
+        (switch-to-buffer (concat "*" job-name " console*"))
+        (funcall (jenkins-refresh-timer buffer-name))))))
 
 (defun hide-butler-job ()
   (interactive)
