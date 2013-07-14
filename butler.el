@@ -52,6 +52,23 @@
   "A major mode for interacting with various CI servers"
   (use-local-map butler-mode-map))
 
+(defun parse-parameters (params)
+  (mapcar (lambda (param)
+            (let ((hash (make-hash-table :test #'equal)))
+              (princ "Foo")
+              (puthash 'name (cdr (assoc 'name param))
+                       hash)
+              (puthash 'description (cdr (assoc 'description param))
+                       hash)
+              (pcase (cdr (assoc 'type param))
+                (`ChoiceParameterDefinition (puthash 'type 'choice hash))
+                (`BooleanParameterDefinition (puthash 'type 'bool hash))
+                (`PasswordParameterDefinition (puthash 'type 'password hash))
+                (`StringParameterDefinition (puthash 'type 'string hash))
+                (`TextParameterDefinition (puthash 'type 'text hash)))
+              hash))
+          params))
+
 (defun refresh-butler-status (callback)
   (prepare-servers)
   (let ((count 0))
@@ -65,13 +82,22 @@
                  (if (not (gethash 'jobs server))
                      (puthash 'jobs (make-hash-table :test #'equal) server))
                  (web-http-get (lambda (httpc _header data)
+                                 (princ data)
                                  (let ((parsed (json-read-from-string data)))
                                    (mapc (lambda (job)
                                            (let* ((hash (or (gethash (cdr (assoc 'name job))
                                                                      (gethash 'jobs server))
                                                             (make-hash-table :test #'equal)))
                                                   (last-build (cdr (assoc 'lastBuild job)))
+                                                  (properties (cdr (assoc 'property job)))
+                                                  (parameters-raw (cdr (assoc 'parameterDefinitions (elt properties (- (length properties) 1)))))
                                                   (executor (cdr (assoc 'likelyStuck last-build))))
+
+                                             (if parameters-raw
+                                                 (progn
+                                                   (princ parameters-raw)
+                                                   (puthash 'parameters (parse-parameters parameters-raw)
+                                                            hash)))
                                              (puthash 'color (cdr (assoc 'color job))
                                                       hash)
                                              (puthash 'name (cdr (assoc 'name job))
@@ -97,7 +123,7 @@
                                  )
                                :url (concat
                                      base-url
-                                     "/api/json?tree=jobs[name,inQueue,color,url,lastBuild[building,duration,estimatedDuration,timestamp,executor[likelyStuck]]]")
+                                     "/api/json?tree=jobs[name,property[parameterDefinitions[defaultParameterValue,description,name,type,choices]],inQueue,color,url,lastBuild[building,duration,estimatedDuration,timestamp,executor[likelyStuck]]]")
                                :extra-headers headers)))
              butler-hash)))
 
