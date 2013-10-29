@@ -258,7 +258,10 @@
                         (auth (gethash 'auth server))
                         (jobs (gethash 'jobs server)))
                    (goto-char (point-max))
-                   (insert (concat name " (" (org-link-unescape address) "): "))
+                   (insert (concat name " ("
+                                   address
+                                   ;; (org-link-unescape address)
+                                   "): "))
                    (insert (propertize (concat "auth: "
                                                auth)
                                        'invisible t))
