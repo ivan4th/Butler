@@ -65,8 +65,6 @@
                  (if (not (gethash 'jobs server))
                      (puthash 'jobs (make-hash-table :test #'equal) server))
                  (web-http-get (lambda (httpc _header data)
-                                 (princ data)
-                                 (princ headers)
                                  (let ((parsed (json-read-from-string data)))
                                    (mapc (lambda (job)
                                            (let* ((hash (or (gethash (cdr (assoc 'name job))
@@ -102,7 +100,8 @@
                                          (substring base-url 0 (- (length base-url) 1))
                                        base-url)
                                      "/api/json?tree=jobs[name,inQueue,color,url,lastBuild[building,duration,estimatedDuration,timestamp,executor[likelyStuck]]]")
-                               :extra-headers headers)))
+                               :extra-headers headers
+                               :logging nil)))
              butler-hash)))
 
 
@@ -170,7 +169,8 @@
       (if (and url auth)
           (web-http-get (lambda (_conn _headers _data))
                          :url (concat url "build/")
-                        :extra-headers `(("Authorization" . ,auth))))      )))
+                         :extra-headers `(("Authorization" . ,auth))
+                         :logging nil)))))
 
 (defun hide-butler-job ()
   (interactive)
